@@ -6,9 +6,10 @@ Captura intentos de autenticación (IP, usuario, contraseña, timestamp).
 import socket
 import threading
 import os
+import time
 from datetime import datetime, timezone
-from colorama import Fore, Style, init as colorama_init
 
+from colorama import Fore, Style, init as colorama_init
 from core.honeypot_base import Honeypot
 
 colorama_init(autoreset=True)
@@ -18,12 +19,14 @@ DEFAULT_BANNER = "SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.6"
 
 
 class SSHHoneypot(Honeypot):
-    """Honeypot que simula un servidor SSH básico por TCP."""
+    """Honeypot que simula un servidor SSH básico por TCP con Rate Limiting."""
 
     def __init__(self, port: int = 2222, config: dict = None):
         super().__init__(name="ssh", port=port, config=config or {})
         self._server_socket: socket.socket | None = None
         self._thread: threading.Thread | None = None
+        self._rate_limit: dict[str, list[float]] = {}
+
 
     # ------------------------------------------------------------------
     # Ciclo de vida
@@ -78,6 +81,26 @@ class SSHHoneypot(Honeypot):
     def _handle_client(self, conn: socket.socket, addr: tuple):
         """Gestiona una conexión individual: envía el banner y recoge credenciales."""
         ip = addr[0]
+        
+        # ── Rate Limiting ───────────────────────────────────────────────
+        now = time.time()
+        history = self._rate_limit.get(ip, [])
+        # Limpiar history viejo (> 60s)
+        history = [t for t in history if now - t < 60]
+        history.append(now)
+        self._rate_limit[ip] = history
+        
+        if len(history) > self.config.get("max_conn_per_min", 20):
+            try:
+                conn.sendall(b"Connection rate limit exceeded.\r\n")
+                conn.close()
+            except Exception:
+                pass
+            return
+
+        # ── Timeout ─────────────────────────────────────────────────────
+        conn.settimeout(self.config.get("timeout", 30))
+        
         banner = self.config.get("banner", DEFAULT_BANNER)
         try:
             conn.sendall(f"{banner}\r\n".encode())
@@ -89,7 +112,8 @@ class SSHHoneypot(Honeypot):
 
             conn.sendall(b"Permission denied, please try again.\r\n")
 
-            event = self.log_event(
+            # ── Disparar evento ─────────────────────────────────────────
+            self.log_event(
                 ip=ip,
                 data={
                     "username": username,
@@ -98,11 +122,6 @@ class SSHHoneypot(Honeypot):
                 },
             )
 
-            print(
-                f"{Fore.CYAN}[SSH] {Fore.WHITE}{ip} "
-                f"→ user={Fore.YELLOW}{username} "
-                f"{Fore.WHITE}pass={Fore.MAGENTA}{password}"
-            )
         except Exception:
             pass
         finally:

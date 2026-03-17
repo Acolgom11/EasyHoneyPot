@@ -1,291 +1,123 @@
-Perfecto, vamos a hacerlo bien estructurado y con mentalidad de producto real, no solo “proyecto de clase”. Te dejo un roadmap progresivo, optimizado para que avances sin bloquearte y con resultados visibles rápido (clave para motivación + portfolio).
+# 🍯 EasyHoneypot
+
+> **Plataforma modular de honeypots en Python** — captura ataques reales, analiza amenazas y las visualiza en tiempo real.
+
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen)]()
 
 ---
 
-# 🗺️ Roadmap: **EasyHoneypot**
+## ¿Qué es?
 
-## 🧱 FASE 0 — Fundamentos (1-2 días)
+EasyHoneypot es una herramienta de **ciberseguridad ofensiva/defensiva** que despliega servicios falsos (SSH, HTTP...) para atraer atacantes, registrar sus credenciales e identificar automáticamente el tipo de amenaza.
 
-Objetivo: no perder tiempo luego por mala base.
+## ¿Para quién es?
 
-**Define:**
+- 🔐 **Estudiantes de ciberseguridad** que quieren ver ataques reales
+- 🧪 **Investigadores** que analizan comportamiento de atacantes
+- 🏠 **Sysadmins** que quieren detectar intrusiones en su red local
 
-* Nombre definitivo: `easyhoneypot`
-* Repo GitHub
-* Licencia (MIT recomendada)
-* Estructura inicial
+## ¿Por qué usarlo?
 
-**Setup:**
+| Característica | EasyHoneypot | Otros |
+|---|---|---|
+| Setup en 1 comando | ✅ | ❌ |
+| Dashboard en tiempo real | ✅ | Parcial |
+| Análisis automático + confianza | ✅ | ❌ |
+| Modo educativo (explicaciones) | ✅ | ❌ |
+| Modular y extensible | ✅ | Parcial |
+
+---
+
+## ⚡ Instalación rápida
 
 ```bash
-easyhoneypot/
- ├── core/
- ├── cli/
- ├── gui/
- ├── templates/
- ├── docs/
- └── main.py
+git clone https://github.com/tu-usuario/easyhoneypot
+cd easyhoneypot/v1.0
+pip install -r requirements.txt
 ```
 
-**Meta clara:**
-👉 Poder ejecutar:
+---
+
+## 🚀 Uso rápido
 
 ```bash
-python main.py
+# Honeypot SSH en puerto 2222
+python main.py start ssh --port 2222 --block
+
+# Honeypot HTTP (login falso) en puerto 8080
+python main.py start http --port 8080 --block
+
+# Con template JSON
+python main.py start --template templates/basic_ssh.json --block
+
+# Dashboard web en tiempo real → http://localhost:5000
+python main.py dashboard
 ```
 
 ---
 
-## ⚙️ FASE 1 — Primer honeypot funcional (MVP real) (3-5 días)
-
-👉 Aquí ya haces algo “de verdad”
-
-### 🎯 Objetivo:
-
-Un honeypot SSH básico que capture intentos de login.
-
-### 🔧 Tareas:
-
-* Servidor TCP simple (socket en Python)
-* Simular prompt SSH:
-
-  ```
-  login:
-  password:
-  ```
-* Guardar:
-
-  * IP
-  * usuario
-  * contraseña
-
-### 📁 Output:
-
-```json
-{
-  "ip": "192.168.1.1",
-  "user": "admin",
-  "pass": "1234",
-  "timestamp": "..."
-}
-```
-
-### 💡 Bonus:
-
-* Guardar en archivo `.log`
-
----
-
-## 🖥️ FASE 2 — CLI usable (2-3 días)
-
-👉 Aquí empieza a parecer herramienta real
-
-### 🎯 Objetivo:
-
-Controlar el honeypot desde terminal.
-
-### 🔧 Comandos:
+## 🖥️ CLI completa
 
 ```bash
-easyhoneypot start ssh --port 2222
-easyhoneypot stop
-easyhoneypot logs
-```
-
-### 🧠 Aprende aquí:
-
-* argparse / click (mejor `click`)
-* estructurar comandos
-
----
-
-## 🧩 FASE 3 — Sistema modular (3-4 días)
-
-👉 Esto es CLAVE para escalar
-
-### 🎯 Objetivo:
-
-Separar honeypots por módulos
-
-### 📁 Ejemplo:
-
-```python
-honeypots/
- ├── ssh.py
- ├── http.py
-```
-
-### 🔧 Tareas:
-
-* Crear interfaz base:
-
-```python
-class Honeypot:
-    def start(self): pass
-    def stop(self): pass
-```
-
-* Cada honeypot hereda
-
----
-
-## 🌐 FASE 4 — Honeypot HTTP (3-5 días)
-
-👉 Aquí empieza lo interesante
-
-### 🎯 Objetivo:
-
-Login web falso
-
-### 🔧 Features:
-
-* Formulario login (HTML)
-* Guardar:
-
-  * IP
-  * user/pass
-  * user-agent
-
-### 💡 Bonus:
-
-* Simular panel admin después del login
-
----
-
-## 📊 FASE 5 — Logs + visualización básica (2-3 días)
-
-👉 Empieza el “wow factor”
-
-### 🎯 Objetivo:
-
-Ver ataques fácilmente
-
-### Opciones:
-
-* CLI:
-
-```bash
-easyhoneypot logs --live
-```
-
-* o mini dashboard web:
-
-```
-localhost:5000
-```
-
-### Mostrar:
-
-* IP
-* intentos
-* timestamps
-
----
-
-## 🧠 FASE 6 — Análisis de ataques (4-6 días)
-
-👉 Aquí te diferencias de verdad
-
-### 🎯 Detectar:
-
-* Fuerza bruta (muchos intentos misma IP)
-* Escaneo
-* Payloads raros
-
-### Ejemplo:
-
-```json
-{
-  "ip": "...",
-  "type": "bruteforce",
-  "attempts": 57
-}
+python main.py start  ssh|http  [--port N] [--template FILE] [--block]
+python main.py stop   [ssh|http]
+python main.py logs   [--live] [--analyze] [--limit N]
+python main.py status                  # honeypots activos
+python main.py stats                   # resumen de eventos
+python main.py attacks                 # alertas detectadas con score
+python main.py dashboard [--port N]    # dashboard web
 ```
 
 ---
 
-## 🖥️ FASE 7 — GUI (Web Dashboard) (5-7 días)
+## 📁 Estructura
 
-👉 Esto lo convierte en herramienta pro
-
-### 🎯 Objetivo:
-
-Interfaz visual
-
-### Stack:
-
-* Flask / FastAPI
-* HTML + JS simple
-
-### Mostrar:
-
-* ataques en tiempo real
-* logs
-* estado honeypots
-
----
-
-## 🧩 FASE 8 — Templates (3-4 días)
-
-👉 Para hacerlo configurable
-
-### 🎯 Ejemplo:
-
-```json
-{
-  "type": "ssh",
-  "port": 2222,
-  "banner": "Ubuntu 20.04"
-}
 ```
-
-### CLI:
-
-```bash
-easyhoneypot start --template basic_ssh.json
+v1.0/
+├── main.py               # Punto de entrada
+├── core/
+│   ├── honeypot_base.py  # Clase base con sistema de eventos
+│   ├── logger.py         # Logger JSON Lines thread-safe
+│   ├── analyzer.py       # Detección + score de confianza
+│   └── educator.py       # Explicaciones educativas por ataque
+├── honeypots/
+│   ├── ssh.py            # Honeypot SSH (TCP)
+│   └── http_honeypot.py  # Honeypot HTTP (Flask)
+├── cli/
+│   └── cli.py            # CLI con rich
+├── gui/
+│   ├── app.py            # Backend Flask-SocketIO
+│   ├── templates/        # Dashboard HTML
+│   └── static/           # CSS
+└── templates/            # JSON de configuración
+    ├── basic_ssh.json
+    ├── basic_http.json
+    ├── centos_ssh.json
+    ├── wordpress_http.json
+    └── router_http.json
 ```
 
 ---
 
-## 🔌 FASE 9 — Plugins (nivel avanzado) (opcional)
+## 🔍 Tipos de ataque detectados
 
-👉 Esto ya es nivel serio open source
-
-* Permitir:
-
-```bash
-easyhoneypot install ftp-plugin
-```
+| Tipo | Descripción | Confianza |
+|------|-------------|-----------|
+| `bruteforce` | Muchos intentos misma IP en poco tiempo | Alta |
+| `scan` | Pocas conexiones rápidas sin payload | Media |
+| `suspicious_payload` | SQLi, XSS, comandos shell, path traversal | Alta |
 
 ---
 
-## 🌍 FASE 10 — Visualización avanzada (opcional)
+## ⚠️ Aviso legal
 
-* Mapa de ataques
-* Gráficas
-* Estadísticas
-
----
-
-# 🧠 Estrategia inteligente (IMPORTANTE)
-
-No intentes todo a la vez.
-
-👉 Orden real:
-
-1. SSH honeypot
-2. CLI
-3. HTTP honeypot
-4. Logs visuales
-5. GUI
+Esta herramienta es solo para uso en **redes y sistemas propios** o con **autorización explícita**.
+El uso en redes ajenas sin permiso es ilegal. Los autores no se responsabilizan del mal uso.
 
 ---
 
-# 🚀 Resultado final
+## 📄 Licencia
 
-Si sigues esto tendrás:
-
-* Proyecto real de ciberseguridad
-* Código modular
-* Interfaz usable
-* Diferenciación (análisis de ataques)
+MIT © 2025 EasyHoneypot

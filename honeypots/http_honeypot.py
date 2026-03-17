@@ -104,8 +104,70 @@ ADMIN_HTML = """
 """
 
 
+# ── Plantillas adicionales ────────────────────────────────────────────────
+ROUTER_HTML = """
+<!DOCTYPE html>
+<html><head><title>Router Login</title>
+<style>
+body { font-family: sans-serif; background:#f0f0f0; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+.box { background:#fff; border:1px solid #ccc; padding:30px; border-radius:4px; box-shadow:0 0 10px rgba(0,0,0,0.1); width:320px; }
+h3 { margin-top:0; color:#333; text-align:center; border-bottom:1px solid #eee; padding-bottom:10px; }
+input { width:100%; padding:8px; margin:10px 0; box-sizing:border-box; border:1px solid #aaa; }
+button { width:100%; padding:10px; background:#005bb5; color:white; border:none; cursor:pointer; font-weight:bold; }
+button:hover { background:#004494; }
+</style></head>
+<body>
+  <div class="box">
+    <h3>Wireless Router Admin</h3>
+    <form method="POST" action="/login">
+      <input type="text" name="username" placeholder="Username" required autofocus>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit">Log In</button>
+    </form>
+  </div>
+</body></html>
+"""
+
+WP_HTML = """
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <title>Log In &lsaquo; WordPress</title>
+  <style>
+    body{ background:#f1f1f1; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+          display:flex; justify-content:center; padding-top:8%; }
+    .login{ width:320px; }
+    .box{ background:#fff; border:1px solid #c3c4c7; box-shadow:0 1px 3px rgba(0,0,0,.04); padding:26px 24px 46px; }
+    label{ font-size:14px; color:#3c434a; display:block; margin-bottom:5px; }
+    input[type=text], input[type=password]{ width:100%; padding:0 8px; line-height:2; font-size:24px; border:1px solid #8c8f94; border-radius:4px; margin-bottom:16px; box-sizing:border-box;}
+    button{ background:#2271b1; border:1px solid #2271b1; color:#fff; cursor:pointer; padding:4px 12px; font-size:13px; font-weight:600; line-height:2; border-radius:3px; float:right; }
+  </style>
+</head>
+<body class="login">
+  <div class="login">
+    <div class="box">
+      <form method="POST" action="/wp-login.php">
+        <label>Username or Email Address</label>
+        <input type="text" name="username" required>
+        <label>Password</label>
+        <input type="password" name="password" required>
+        <button type="submit">Log In</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+PAGES = {
+    "admin_login": LOGIN_HTML,
+    "router": ROUTER_HTML,
+    "wordpress": WP_HTML,
+}
+
+
 class HTTPHoneypot(Honeypot):
-    """Honeypot que sirve una página de login falsa mediante Flask."""
+    """Honeypot web que sirve formularios de login falsos (admin, router, wordpress)."""
 
     def __init__(self, port: int = 8080, config: dict = None):
         super().__init__(name="http", port=port, config=config or {})
@@ -118,7 +180,6 @@ class HTTPHoneypot(Honeypot):
 
     def start(self):
         if self.running:
-            print(f"{Fore.YELLOW}[HTTP] Ya está corriendo en el puerto {self.port}.")
             return
 
         self._app = self._build_app()
@@ -128,14 +189,10 @@ class HTTPHoneypot(Honeypot):
             target=self._run_flask, daemon=True
         )
         self._thread.start()
-        print(
-            f"{Fore.GREEN}[HTTP] Honeypot iniciado en http://0.0.0.0:{self.port} "
-            f"{Style.DIM}(Ctrl+C para detener)"
-        )
 
     def stop(self):
         self.running = False
-        print(f"{Fore.RED}[HTTP] Honeypot detenido.")
+
 
     # ------------------------------------------------------------------
     # Flask app
@@ -144,20 +201,26 @@ class HTTPHoneypot(Honeypot):
     def _build_app(self) -> Flask:
         app = Flask(__name__)
         app.secret_key = "easyhoneypot-secret"
+        
+        # Seleccionar template de HTML
+        conf_page = self.config.get("fake_page", "admin_login")
+        html_template = PAGES.get(conf_page, LOGIN_HTML)
         title = self.config.get("title", "Admin Panel")
 
-        @app.route("/", methods=["GET"])
-        def index():
-            return render_template_string(LOGIN_HTML, title=title, error=None)
-
+        @app.route("/", methods=["GET", "POST"])
         @app.route("/login", methods=["POST"])
-        def do_login():
-            username = request.form.get("username", "")
-            password = request.form.get("password", "")
+        @app.route("/wp-login.php", methods=["GET", "POST"])
+        def catch_all():
+            if request.method == "GET":
+                return render_template_string(html_template, title=title)
+
+            username = request.form.get("username", request.form.get("log", ""))
+            password = request.form.get("password", request.form.get("pwd", ""))
             ip = request.headers.get("X-Forwarded-For", request.remote_addr)
             user_agent = request.headers.get("User-Agent", "")
 
-            event = self.log_event(
+            # ── Disparar evento a los callbacks del core ──────────
+            self.log_event(
                 ip=ip,
                 data={
                     "username": username,
@@ -166,14 +229,8 @@ class HTTPHoneypot(Honeypot):
                     "port": self.port,
                 },
             )
-            print(
-                f"{Fore.CYAN}[HTTP] {Fore.WHITE}{ip} "
-                f"→ user={Fore.YELLOW}{username} "
-                f"{Fore.WHITE}pass={Fore.MAGENTA}{password} "
-                f"{Fore.WHITE}ua={Fore.BLUE}{user_agent[:60]}"
-            )
 
-            # Simular panel admin
+            # Simular panel admin o falso 403
             return render_template_string(ADMIN_HTML, title=title)
 
         return app
