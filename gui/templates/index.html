@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EasyHoneypot — Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════  SIDEBAR  ═══════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <span class="logo">🍯</span>
+    <span class="brand-name">EasyHoneypot</span>
+    <span class="brand-ver">v1.0</span>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#events"   class="nav-item active" data-tab="events">
+      <span class="nav-icon">📋</span> Eventos
+    </a>
+    <a href="#alerts"   class="nav-item" data-tab="alerts">
+      <span class="nav-icon">🚨</span> Alertas
+      <span class="badge" id="badge-alerts">0</span>
+    </a>
+    <a href="#stats"    class="nav-item" data-tab="stats">
+      <span class="nav-icon">📊</span> Estadísticas
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="status-dot active" id="ws-status-dot"></div>
+    <span id="ws-status-text">Conectado</span>
+  </div>
+</aside>
+
+<!-- ═══════════════════════  MAIN  ═══════════════════════════ -->
+<main class="main">
+
+  <!-- ── Header ──────────────────────────────────────────────── -->
+  <header class="top-bar">
+    <div>
+      <h1 class="page-title" id="page-title">Eventos en vivo</h1>
+      <p class="page-sub" id="page-sub">Capturados por tus honeypots activos</p>
+    </div>
+    <div class="top-bar-actions">
+      <button class="btn btn-ghost" onclick="refreshAll()">↺ Actualizar</button>
+      <button class="btn btn-primary" onclick="clearTable()">🗑 Limpiar vista</button>
+    </div>
+  </header>
+
+  <!-- ── KPI Cards ──────────────────────────────────────────── -->
+  <section class="kpi-grid">
+    <div class="kpi-card kpi-total">
+      <span class="kpi-icon">🎯</span>
+      <div>
+        <p class="kpi-label">Total eventos</p>
+        <p class="kpi-value" id="kpi-total">—</p>
+      </div>
+    </div>
+    <div class="kpi-card kpi-ssh">
+      <span class="kpi-icon">🔒</span>
+      <div>
+        <p class="kpi-label">SSH</p>
+        <p class="kpi-value" id="kpi-ssh">—</p>
+      </div>
+    </div>
+    <div class="kpi-card kpi-http">
+      <span class="kpi-icon">🌐</span>
+      <div>
+        <p class="kpi-label">HTTP</p>
+        <p class="kpi-value" id="kpi-http">—</p>
+      </div>
+    </div>
+    <div class="kpi-card kpi-alerts">
+      <span class="kpi-icon">⚠️</span>
+      <div>
+        <p class="kpi-label">Alertas</p>
+        <p class="kpi-value" id="kpi-alerts">—</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════  TAB: EVENTS  ═══════════ -->
+  <section class="tab-content active" id="tab-events">
+    <div class="card">
+      <div class="card-header">
+        <h2>📋 Eventos capturados</h2>
+        <div class="live-indicator">
+          <span class="pulse"></span> LIVE
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="events-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Honeypot</th>
+              <th>IP</th>
+              <th>Usuario</th>
+              <th>Contraseña</th>
+              <th>Extra</th>
+            </tr>
+          </thead>
+          <tbody id="events-tbody">
+            <tr class="empty-row"><td colspan="6">Esperando eventos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════  TAB: ALERTS  ════════════ -->
+  <section class="tab-content" id="tab-alerts">
+    <div class="card">
+      <div class="card-header">
+        <h2>🚨 Análisis de ataques</h2>
+        <button class="btn btn-ghost" onclick="loadAlerts()">↺ Analizar</button>
+      </div>
+      <div class="table-wrap">
+        <table id="alerts-table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>IP</th>
+              <th>Intentos</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-tbody">
+            <tr class="empty-row"><td colspan="4">Pulsa "Analizar" para detectar amenazas.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════  TAB: STATS  ════════════ -->
+  <section class="tab-content" id="tab-stats">
+    <div class="stats-grid">
+      <div class="card">
+        <div class="card-header"><h2>📊 Distribución por tipo</h2></div>
+        <div class="chart-wrap">
+          <canvas id="chart-type"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>🏴‍☠️ Top IPs atacantes</h2></div>
+        <div class="table-wrap">
+          <table id="topips-table">
+            <thead><tr><th>#</th><th>IP</th><th>Intentos</th></tr></thead>
+            <tbody id="topips-tbody">
+              <tr class="empty-row"><td colspan="3">Sin datos aún.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const socket = io();
+let typeChart = null;
+const ATTACK_COLORS = {
+  bruteforce: '#ef4444',
+  scan: '#f59e0b',
+  suspicious_payload: '#a855f7',
+};
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', e => {
+    e.preventDefault();
+    const tab = item.dataset.tab;
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+
+    const titles = { events: ['Eventos en vivo','Capturados por tus honeypots activos'],
+                     alerts: ['Análisis de ataques','Amenazas detectadas automáticamente'],
+                     stats:  ['Estadísticas','Resumen de actividad'] };
+    document.getElementById('page-title').textContent = titles[tab][0];
+    document.getElementById('page-sub').textContent   = titles[tab][1];
+
+    if (tab === 'alerts') loadAlerts();
+    if (tab === 'stats')  loadStats();
+  });
+});
+
+// ── WebSocket ────────────────────────────────────────────────────────────────
+socket.on('connect',    () => setWsStatus(true));
+socket.on('disconnect', () => setWsStatus(false));
+
+socket.on('new_event', ev => {
+  prependEventRow(ev, true);
+  loadKPIs();
+});
+
+function setWsStatus(ok) {
+  document.getElementById('ws-status-dot').className = 'status-dot ' + (ok ? 'active' : 'inactive');
+  document.getElementById('ws-status-text').textContent = ok ? 'Conectado' : 'Desconectado';
+}
+
+// ── Load inicial ─────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  loadEvents();
+  loadKPIs();
+});
+
+function refreshAll() { loadEvents(); loadKPIs(); }
+
+// ── Eventos ──────────────────────────────────────────────────────────────────
+async function loadEvents() {
+  const res = await fetch('/api/events?limit=50');
+  const data = await res.json();
+  const tbody = document.getElementById('events-tbody');
+  tbody.innerHTML = '';
+  if (!data.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Esperando eventos…</td></tr>';
+    return;
+  }
+  data.forEach(ev => prependEventRow(ev, false));
+}
+
+function prependEventRow(ev, animate) {
+  const tbody = document.getElementById('events-tbody');
+  // Eliminar fila vacía si existe
+  const empty = tbody.querySelector('.empty-row');
+  if (empty) empty.remove();
+
+  const ua = ev.user_agent ? ev.user_agent.substring(0, 50) + '…' : '—';
+  const extra = ev.honeypot === 'http' ? `<span class="badge-ua">${ua}</span>` : '—';
+  const badge = ev.honeypot === 'ssh'
+    ? '<span class="hp-badge hp-ssh">SSH</span>'
+    : '<span class="hp-badge hp-http">HTTP</span>';
+
+  const ts = (ev.timestamp || '').replace('T',' ').substring(0,19);
+
+  const tr = document.createElement('tr');
+  if (animate) tr.classList.add('row-new');
+  tr.innerHTML = `
+    <td class="ts">${ts}</td>
+    <td>${badge}</td>
+    <td class="ip">${ev.ip || '?'}</td>
+    <td class="user">${ev.username || ev.user || '—'}</td>
+    <td class="pass">${ev.password || '—'}</td>
+    <td>${extra}</td>
+  `;
+  tbody.prepend(tr);
+
+  // Limitar a 100 filas en pantalla
+  while (tbody.rows.length > 100) tbody.deleteRow(tbody.rows.length - 1);
+}
+
+function clearTable() {
+  document.getElementById('events-tbody').innerHTML =
+    '<tr class="empty-row"><td colspan="6">Vista limpiada — los logs no se borran.</td></tr>';
+}
+
+// ── KPIs ─────────────────────────────────────────────────────────────────────
+async function loadKPIs() {
+  const res = await fetch('/api/stats');
+  const s = await res.json();
+  document.getElementById('kpi-total').textContent = s.total;
+  document.getElementById('kpi-ssh').textContent   = s.by_type['ssh']  || 0;
+  document.getElementById('kpi-http').textContent  = s.by_type['http'] || 0;
+
+  const alertRes = await fetch('/api/alerts');
+  const alerts   = await alertRes.json();
+  document.getElementById('kpi-alerts').textContent = alerts.length;
+  document.getElementById('badge-alerts').textContent = alerts.length;
+}
+
+// ── Alertas ──────────────────────────────────────────────────────────────────
+async function loadAlerts() {
+  const res = await fetch('/api/alerts');
+  const data = await res.json();
+  const tbody = document.getElementById('alerts-tbody');
+  tbody.innerHTML = '';
+
+  if (!data.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">✅ Sin amenazas detectadas.</td></tr>';
+    return;
+  }
+
+  data.forEach(a => {
+    const color = ATTACK_COLORS[a.type] || '#64748b';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="attack-badge" style="background:${color}20;color:${color};border:1px solid ${color}40">${a.type}</span></td>
+      <td class="ip">${a.ip}</td>
+      <td><strong>${a.attempts}</strong></td>
+      <td>${a.detail}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Estadísticas ──────────────────────────────────────────────────────────────
+async function loadStats() {
+  const res = await fetch('/api/stats');
+  const s = await res.json();
+
+  // Chart distribución
+  const ctx = document.getElementById('chart-type').getContext('2d');
+  const labels = Object.keys(s.by_type);
+  const values = Object.values(s.by_type);
+
+  if (typeChart) typeChart.destroy();
+  typeChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#6366f1','#22d3ee','#a855f7','#f59e0b'],
+        borderColor: '#1e293b',
+        borderWidth: 3,
+      }],
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 13 } } } },
+      cutout: '65%',
+    },
+  });
+
+  // Top IPs
+  const tbody = document.getElementById('topips-tbody');
+  tbody.innerHTML = '';
+  if (!s.top_ips.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Sin datos.</td></tr>';
+    return;
+  }
+  s.top_ips.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td class="ip">${row.ip}</td><td><strong>${row.count}</strong></td>`;
+    tbody.appendChild(tr);
+  });
+}
+</script>
+</body>
+</html>
